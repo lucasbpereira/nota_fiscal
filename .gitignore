@@ -1,0 +1,34 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories
+/nota_fiscal_api/vendor/
+/nota_fiscal_api/Godeps/
+
+# Go workspace file
+/nota_fiscal_api/go.work
+
+# Environment files
+/nota_fiscal_api/configs/.env
+/nota_fiscal_api/configs/.env.local
+/nota_fiscal_api/configs/.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+
+# Docker
+/nota_fiscal_api/docker-compose.override.yml
+
+# Log files
+*.log
