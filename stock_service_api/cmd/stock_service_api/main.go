@@ -14,6 +14,6 @@ func main() {
 	app := fiber.New()
 	app.Post("/products", handlers.CreateProduct)
 	app.Get("/products", handlers.GetProducts)
-
+	app.Put("/products/balance-update", handlers.BalanceUpdate)
 	log.Fatal(app.Listen(":3000"))
 }

@@ -1,0 +1,102 @@
+<section class="products">
+  <h2>Produtos</h2>
+      <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          class="form-control"
+          placeholder="Digite o nome do produto">
+          @if(productForm.get('name')?.invalid && productForm.get('name')?.touched) {
+            <div
+                 class="error-message">
+              Nome é obrigatório
+            </div>
+          }
+      </div>
+
+      <div class="form-group">
+        <input
+          id="description"
+          formControlName="description"
+          class="form-control"
+          placeholder="Digite a descrição do produto">
+          @if(productForm.get('description')?.invalid && productForm.get('description')?.touched) {
+            <div class="error-message">
+              Descrição é obrigatória
+            </div>
+          }
+        </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <input
+            type="number"
+            id="price"
+            formControlName="price"
+            class="form-control"
+            placeholder="0.00"
+            step="0.01"
+            min="0">
+            @if(productForm.get('price')?.invalid && productForm.get('price')?.touched){
+              <div class="error-message">
+                Preço é obrigatório e deve ser maior que zero
+              </div>
+            }
+        </div>
+
+        <div class="form-group">
+          <input
+            type="number"
+            id="balance"
+            formControlName="balance"
+            class="form-control"
+            placeholder="0"
+            step="1"
+            min="0">
+            @if(productForm.get('balance')?.invalid && productForm.get('balance')?.touched) {
+              <div class="error-message">
+                Estoque é obrigatório
+              </div>
+            }
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="submit"
+          class="btn-primary"
+          [disabled]="productForm.invalid">
+          Adicionar Produto
+        </button>
+
+      </div>
+    </form>
+  <ul class="list_products">
+    @for (product of productsList; track product.id) {
+      <li class="product-card">
+        <h3>{{ product.name }}</h3>
+        <p>{{product.description}}</p>
+        <div class="footer-product">
+          <div class="items">
+            <span class="value">{{ product.balance }}</span>
+            <span class="legend">Em estoque</span>
+          </div>
+          <div class="items">
+            <span class="value">
+              <span class="symbol">R$</span>
+              {{ product.price | currency: 'BRL':'':'1.2-2'}}
+            </span>
+            <span class="legend">Em estoque</span>
+          </div>
+        </div>
+        <button class="btn-primary" (click)="addToCart(product)">Adicionar ao carrinho</button>
+      </li>
+    }
+  </ul>
+  <aside>
+    <h2>Carrinho</h2>
+    <app-cart [cartItems]="cartItems"></app-cart>
+  </aside>
+</section>

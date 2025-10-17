@@ -35,5 +35,5 @@ docker-compose --env-file ./configs/.env up -d
 ## Useful Commands
 
 - Check application logs: `docker-compose logs app`
-- Check database tables: `docker-compose exec db psql -U postgres -d nota_fiscal_db -c "\dt"`
+- Check database tables: `docker-compose exec db psql -U postgres -d stock_db -c "\dt"`
 - Stop services: `docker-compose down`

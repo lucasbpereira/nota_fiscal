@@ -1,0 +1,31 @@
+main{
+  width: 100dvw;
+  min-height: 100dvh;
+  background-color: #f4f4f4;
+  color: #444;
+
+  nav {
+    width: calc(100% - 10rem);
+    padding: 0 5rem;
+    height: 60px;
+    background-color: #2b485a;
+    color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    ul {
+      display: flex;
+      gap: 2rem;
+
+      li {
+        list-style: none;
+
+        a {
+          text-decoration: none;
+          color: #f4f4f4;
+        }
+      }
+    }
+  }
+}

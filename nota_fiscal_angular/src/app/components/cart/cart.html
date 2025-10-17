@@ -1,0 +1,23 @@
+<div class="cart-items">
+@if(cartItems.length === 0) {
+  <p>Seu carrinho está vazio</p>
+} @else {
+  @for(item of cartItems; track item.id) {
+    <div class="cart-item">
+      <h3 class="product-name">{{ item.name }}</h3>
+      <div class="items">
+        <span class="product-quantity">Unidades: <strong>{{ item.amount }}</strong></span>
+        <span class="product-price">Valor Unitário: <strong>R${{ item.value | currency: 'BRL':'':'1.2-2' }}</strong></span>
+      </div>
+    </div>
+  }
+
+  <div class="footer">
+    <div class="total">
+      <span>Total:</span>
+      <span class="total-value">R$ {{ total | currency: 'BRL':'':'1.2-2' }}</span>
+    </div>
+    <button class="btn-primary" (click)="generateInvoice(cartItems)">Gerar Nota</button>
+  </div>
+}
+</div>

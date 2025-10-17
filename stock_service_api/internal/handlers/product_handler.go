@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/lucasbpereira/stock_service_api/db"
 	"github.com/lucasbpereira/stock_service_api/internal/models"
+	"fmt"
 )
 
 type ErrorResponse struct {
@@ -69,4 +70,82 @@ func GetProducts(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Error getting products"})
 	}
 	return c.JSON(product)
+}
+
+func BalanceUpdate(c *fiber.Ctx) error {
+	var requests []struct {
+		ProductID string `json:"product_id" validate:"required"`
+		Quantity  int    `json:"quantity" validate:"required,min=1"`
+	}
+
+	if err := c.BodyParser(&requests); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"success": false,
+			"error": "Invalid request data",
+		})
+	}
+
+	// Validar dados
+	validate := validator.New()
+	for _, req := range requests {
+		if err := validate.Struct(req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"error": "Validation failed",
+			})
+		}
+	}
+
+	// Atualizar estoque em transação
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error": "Error starting transaction",
+		})
+	}
+
+	for _, req := range requests {
+		// Verificar se há estoque suficiente
+		var currentBalance int
+		err := tx.Get(&currentBalance, "SELECT balance FROM product WHERE id = $1", req.ProductID)
+		if err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"success": false,
+				"error": fmt.Sprintf("Product not found: %s", req.ProductID),
+			})
+		}
+
+		if currentBalance < req.Quantity {
+			tx.Rollback()
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"success": false,
+				"error": fmt.Sprintf("Insufficient stock for product: %s", req.ProductID),
+			})
+		}
+
+		// Atualizar estoque
+		_, err = tx.Exec("UPDATE product SET balance = balance - $1 WHERE id = $2", 
+			req.Quantity, req.ProductID)
+		if err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"error": "Error updating stock",
+			})
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"success": false,
+			"error": "Error committing transaction",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": fmt.Sprintf("Stock updated for %d products", len(requests)),
+	})
 }

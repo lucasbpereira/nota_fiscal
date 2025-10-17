@@ -1,4 +1,4 @@
-module github.com/lucasbpereira/stock_service_api
+module github.com/lucasbpereira/billing_service_api
 
 go 1.25.1
 

@@ -1,0 +1,93 @@
+services:
+  # Stock Service Database
+  stock_db:
+    image: postgres:15
+    container_name: stock_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres  # Database temporário para inicialização
+    ports:
+      - "5432:5432"
+    volumes:
+      - stock_db_data:/var/lib/postgresql/data
+      - ./init-scripts/init-stock-db.sql:/docker-entrypoint-initdb.d/init-stock-db.sql
+    networks:
+      - korp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Billing Service Database
+  billing_db:
+    image: postgres:15
+    container_name: billing_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres  # Database temporário para inicialização
+      STOCK_SERVICE_URL: http://stock_service_api:3000  # ✅ Adicionado
+    ports:
+      - "5433:5432"
+    volumes:
+      - billing_db_data:/var/lib/postgresql/data
+      - ./init-scripts/init-billing-db.sql:/docker-entrypoint-initdb.d/init-billing-db.sql
+    networks:
+      - korp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Stock Service API
+  stock_service_api:
+    build:
+      context: ./stock_service_api
+      dockerfile: Dockerfile
+    container_name: stock_service_api
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: stock_db
+      DB_PORT: 5432
+      DB_USER: stock_user
+      DB_PASSWORD: stock_password
+      DB_NAME: stock_db
+    depends_on:
+      stock_db:
+        condition: service_healthy
+    networks:
+      - korp-network
+    restart: unless-stopped
+
+  # Billing Service API
+  billing_service_api:
+    build:
+      context: ./billing_service_api
+      dockerfile: Dockerfile
+    container_name: billing_service_api
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: billing_db
+      DB_PORT: 5432
+      DB_USER: billing_user
+      DB_PASSWORD: billing_password
+      DB_NAME: billing_db
+    depends_on:
+      billing_db:
+        condition: service_healthy
+    networks:
+      - korp-network
+    restart: unless-stopped
+
+volumes:
+  stock_db_data:
+  billing_db_data:
+
+networks:
+  korp-network:
+    driver: bridge

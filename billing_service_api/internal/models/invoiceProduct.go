@@ -1,8 +1,15 @@
 package models
 
-type ProdutoNota struct {
-	ProdutoID     string  `json:"produto_id"`
-	Quantidade    int     `json:"quantidade"`
-	ValorUnitario float64 `json:"valor_unitario"`
-	NomeProduto   string  `json:"nome_produto,omitempty"` // Preenchido via serviço de estoque
+import (
+	"github.com/google/uuid"
+)
+
+type InvoiceProduct struct {
+	ID          uuid.UUID `json:"id" db:"id"`
+	InvoiceCode string    `json:"invoice_code" db:"invoice_code"`
+	ProductID   string    `json:"product_id" db:"product_id"`
+	Amount      int       `json:"amount" db:"amount"`
+	Price       float64   `json:"price" db:"price"`
+	Name        string    `json:"name,omitempty" db:"name"`
+	CreatedAt   string    `json:"created_at,omitempty" db:"created_at"`
 }
