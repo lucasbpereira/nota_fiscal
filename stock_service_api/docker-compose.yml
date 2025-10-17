@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./configs/.env
+    environment:
+      DB_HOST: db
+    volumes:
+      - .:/app
+    command: sh -c "go mod download && go run ./cmd/stock_service_api"
+
+  db:
+    image: postgres:15
+    restart: always
+    env_file:
+      - ./configs/.env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./configs/.env
+    environment:
+      DB_HOST: db
+    volumes:
+      - ./db/migrations:/migrations
+    command: ["migrate", "-path", "/migrations", "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable", "up"]
+
+volumes:
+  postgres_data:

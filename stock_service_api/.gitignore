@@ -19,7 +19,7 @@ Godeps/
 go.work
 
 # Environment files
-.env
+configs/.env
 .env.local
 .env.*.local
 
