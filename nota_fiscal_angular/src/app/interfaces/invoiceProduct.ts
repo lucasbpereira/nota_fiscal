@@ -1,6 +1,7 @@
 export default interface InvoiceProduct {
-  id: string;
+  id?: string;
+  product_id: string;
   name: string;
-  value: number;
+  price: number;
   amount: number;
 }

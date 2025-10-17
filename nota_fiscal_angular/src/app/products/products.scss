@@ -4,6 +4,10 @@ section {
       display: flex;
       background-color: #f4f4f4;
 
+      //  display: flex;
+      // flex-direction: column;
+      // align-items: center;
+
       ul {
         &.list_products {
           width: 70%;

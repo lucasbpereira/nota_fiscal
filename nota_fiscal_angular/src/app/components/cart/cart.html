@@ -7,7 +7,7 @@
       <h3 class="product-name">{{ item.name }}</h3>
       <div class="items">
         <span class="product-quantity">Unidades: <strong>{{ item.amount }}</strong></span>
-        <span class="product-price">Valor Unitário: <strong>R${{ item.value | currency: 'BRL':'':'1.2-2' }}</strong></span>
+        <span class="product-price">Valor Unitário: <strong>R${{ item.price | currency: 'BRL':'':'1.2-2' }}</strong></span>
       </div>
     </div>
   }

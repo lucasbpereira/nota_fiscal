@@ -2,16 +2,16 @@ FROM golang:1.25.1-alpine
 
 WORKDIR /app
 
-# Instalar dependências do sistema
+# Instala dependências do sistema
 RUN apk add --no-cache git
 
-# Copiar mod files primeiro (para cache de dependências)
+# Copia os arquivos de dependências primeiro
 COPY go.mod go.sum ./
 
-# Baixar dependências
+# Baixa todas as dependências
 RUN go mod download && go mod verify
 
-# Copiar código fonte
+# Copia o código fonte
 COPY . .
 
 # Build da aplicação
@@ -20,5 +20,5 @@ RUN go build -o main ./cmd/stock_service_api
 # Expor porta
 EXPOSE 3000
 
-# Comando para rodar a aplicação
+# Comando para executar a aplicação
 CMD ["./main"]
