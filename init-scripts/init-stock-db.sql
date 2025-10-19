@@ -4,7 +4,10 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'stock_db')\gexec
 
 -- Conectar ao database stock_db
 \c stock_db;
+DROP TABLE IF EXISTS product CASCADE;
 
+-- Opcional: deletar a extensão e recriar
+DROP EXTENSION IF EXISTS "uuid-ossp";
 -- Criar usuário se não existir
 DO $$
 BEGIN
@@ -34,9 +37,3 @@ CREATE TABLE IF NOT EXISTS product (
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO stock_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO stock_user;
 
--- Inserir dados de exemplo (agora compatíveis)
-INSERT INTO product (id, name, description, price, balance) VALUES
-    (uuid_generate_v4(), 'Product A', 'Description A', 29.99, 100),
-    (uuid_generate_v4(), 'Product B', 'Description B', 49.99, 50),
-    (uuid_generate_v4(), 'Product C', 'Description C', 9.99, 200)
-ON CONFLICT DO NOTHING;

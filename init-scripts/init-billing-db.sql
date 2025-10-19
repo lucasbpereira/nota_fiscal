@@ -4,6 +4,11 @@ CREATE DATABASE billing_db;
 -- Conectar ao database billing_db
 \c billing_db;
 
+DROP TABLE IF EXISTS invoice_products CASCADE;
+DROP TABLE IF EXISTS invoices CASCADE;
+
+-- Opcional: deletar a extensão e recriar
+DROP EXTENSION IF EXISTS "uuid-ossp";
 -- Criar extensão para UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -29,8 +34,6 @@ CREATE TABLE invoice_products (
     invoice_code VARCHAR(100) NOT NULL, -- ✅ Mudado para invoice_code
     product_id VARCHAR(100) NOT NULL,
     amount INTEGER NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    name VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign key agora referencia o code da invoice

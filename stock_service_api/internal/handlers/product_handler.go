@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/lucasbpereira/stock_service_api/db"
 	"github.com/lucasbpereira/stock_service_api/internal/models"
-	"fmt"
 )
 
 type ErrorResponse struct {
@@ -81,7 +82,7 @@ func BalanceUpdate(c *fiber.Ctx) error {
 	if err := c.BodyParser(&requests); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"success": false,
-			"error": "Invalid request data",
+			"error":   "Invalid request data",
 		})
 	}
 
@@ -91,7 +92,7 @@ func BalanceUpdate(c *fiber.Ctx) error {
 		if err := validate.Struct(req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"success": false,
-				"error": "Validation failed",
+				"error":   "Validation failed",
 			})
 		}
 	}
@@ -101,7 +102,7 @@ func BalanceUpdate(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
-			"error": "Error starting transaction",
+			"error":   "Error starting transaction",
 		})
 	}
 
@@ -113,7 +114,7 @@ func BalanceUpdate(c *fiber.Ctx) error {
 			tx.Rollback()
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"success": false,
-				"error": fmt.Sprintf("Product not found: %s", req.ProductID),
+				"error":   fmt.Sprintf("Product not found: %s", req.ProductID),
 			})
 		}
 
@@ -121,18 +122,18 @@ func BalanceUpdate(c *fiber.Ctx) error {
 			tx.Rollback()
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"success": false,
-				"error": fmt.Sprintf("Insufficient stock for product: %s", req.ProductID),
+				"error":   fmt.Sprintf("Insufficient stock for product: %s", req.ProductID),
 			})
 		}
 
 		// Atualizar estoque
-		_, err = tx.Exec("UPDATE product SET balance = balance - $1 WHERE id = $2", 
+		_, err = tx.Exec("UPDATE product SET balance = balance - $1 WHERE id = $2",
 			req.Quantity, req.ProductID)
 		if err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"success": false,
-				"error": "Error updating stock",
+				"error":   "Error updating stock",
 			})
 		}
 	}
@@ -140,7 +141,7 @@ func BalanceUpdate(c *fiber.Ctx) error {
 	if err := tx.Commit(); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
-			"error": "Error committing transaction",
+			"error":   "Error committing transaction",
 		})
 	}
 
@@ -148,4 +149,19 @@ func BalanceUpdate(c *fiber.Ctx) error {
 		"success": true,
 		"message": fmt.Sprintf("Stock updated for %d products", len(requests)),
 	})
+}
+
+func GetProductById(c *fiber.Ctx) error {
+	productId := c.Params("id")
+	if productId == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invoice code is required"})
+	}
+
+	var product models.Product
+	err := db.DB.Get(&product, "SELECT * FROM product WHERE id = $1", productId)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Product not found"})
+	}
+
+	return c.JSON(product)
 }

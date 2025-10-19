@@ -2,7 +2,7 @@
 @if(cartItems.length === 0) {
   <p>Seu carrinho está vazio</p>
 } @else {
-  @for(item of cartItems; track item.id) {
+  @for(item of cartItems; track item?.id || $index; let i = $index) {
     <div class="cart-item">
       <h3 class="product-name">{{ item.name }}</h3>
       <div class="items">
@@ -21,3 +21,4 @@
   </div>
 }
 </div>
+<p-toast position="bottom-center" />

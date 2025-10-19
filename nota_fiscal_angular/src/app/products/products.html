@@ -1,103 +1,110 @@
 <section class="products">
-  <h2>Produtos</h2>
+  <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
+    <!-- Seu formulário existente permanece igual -->
+    <div class="form-group">
+      <p-floatlabel>
+        <input pInputText id="name" formControlName="name" autocomplete="off" />
+        <label for="on_label">Nome</label>
+      </p-floatlabel>
+      @if(productForm.get('name')?.invalid && productForm.get('name')?.touched) {
+        <div class="error-message">
+          Nome é obrigatório
+        </div>
+      }
+    </div>
 
-      <form [formGroup]="productForm" (ngSubmit)="onSubmit()">
-      <div class="form-group">
-        <input
-          type="text"
-          id="name"
-          formControlName="name"
-          class="form-control"
-          placeholder="Digite o nome do produto">
-          @if(productForm.get('name')?.invalid && productForm.get('name')?.touched) {
-            <div
-                 class="error-message">
-              Nome é obrigatório
+    <div class="form-group">
+      <p-floatlabel>
+        <input pInputText id="description" formControlName="description" autocomplete="off" />
+        <label for="on_label">Descrição</label>
+      </p-floatlabel>
+      @if(productForm.get('description')?.invalid && productForm.get('description')?.touched) {
+        <div class="error-message">
+          Descrição é obrigatório
+        </div>
+      }
+    </div>
+
+    <div class="form-group price-group">
+      <p-floatlabel>
+        <p-inputnumber formControlName="price" inputId="currency-us" mode="currency" currency="BRL" locale="pt-BR" class="price-field" />
+        <label for="price">Preço</label>
+      </p-floatlabel>
+      
+      @if(productForm.get('price')?.invalid && productForm.get('price')?.touched){
+        <div class="error-message">
+          Preço deve ser maior que 0
+        </div>
+      }
+    </div>
+
+    <div class="form-group">
+      <p-inputnumber formControlName="balance" [showButtons]="true" buttonLayout="horizontal" spinnerMode="horizontal" inputId="horizontal" [inputStyle]="{ width: '3rem' }">
+        <ng-template #incrementbuttonicon>+</ng-template>
+        <ng-template #decrementbuttonicon>-</ng-template>
+      </p-inputnumber>
+      @if(productForm.get('balance')?.invalid && productForm.get('balance')?.touched) {
+        <div class="error-message">
+          Estoque é obrigatório
+        </div>
+      }
+    </div>
+    
+    <button type="submit" class="btn-primary" [disabled]="productForm.invalid">
+      Adicionar Produto
+    </button>
+  </form>
+
+  <div class="container">
+    <ul class="list_products">
+      @for (product of productsList; track product?.id || $index; let i = $index) {
+        <li class="product-card">
+          <h3>{{ product.name }}</h3>
+          <p>{{product.description}}</p>
+          <div class="footer-product">
+            <div class="items">
+              <span class="value">{{ product.balance }}</span>
+              <span class="legend">Em estoque</span>
             </div>
-          }
-      </div>
-
-      <div class="form-group">
-        <input
-          id="description"
-          formControlName="description"
-          class="form-control"
-          placeholder="Digite a descrição do produto">
-          @if(productForm.get('description')?.invalid && productForm.get('description')?.touched) {
-            <div class="error-message">
-              Descrição é obrigatória
+            <div class="items">
+              <span class="value">
+                <span class="symbol">R$</span>
+                {{ product.price | currency: 'BRL':'':'1.2-2'}}
+              </span>
+              <span class="legend">Em estoque</span>
             </div>
-          }
-        </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <input
-            type="number"
-            id="price"
-            formControlName="price"
-            class="form-control"
-            placeholder="0.00"
-            step="0.01"
-            min="0">
-            @if(productForm.get('price')?.invalid && productForm.get('price')?.touched){
-              <div class="error-message">
-                Preço é obrigatório e deve ser maior que zero
-              </div>
-            }
-        </div>
-
-        <div class="form-group">
-          <input
-            type="number"
-            id="balance"
-            formControlName="balance"
-            class="form-control"
-            placeholder="0"
-            step="1"
-            min="0">
-            @if(productForm.get('balance')?.invalid && productForm.get('balance')?.touched) {
-              <div class="error-message">
-                Estoque é obrigatório
-              </div>
-            }
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button
-          type="submit"
-          class="btn-primary"
-          [disabled]="productForm.invalid">
-          Adicionar Produto
-        </button>
-
-      </div>
-    </form>
-  <ul class="list_products">
-    @for (product of productsList; track product.id) {
-      <li class="product-card">
-        <h3>{{ product.name }}</h3>
-        <p>{{product.description}}</p>
-        <div class="footer-product">
-          <div class="items">
-            <span class="value">{{ product.balance }}</span>
-            <span class="legend">Em estoque</span>
           </div>
-          <div class="items">
-            <span class="value">
-              <span class="symbol">R$</span>
-              {{ product.price | currency: 'BRL':'':'1.2-2'}}
-            </span>
-            <span class="legend">Em estoque</span>
+          <div class="cart-opt">
+            <!-- Usando FormArray para controlar as quantidades -->
+            <div [formGroup]="getProductFormGroup(i)">
+              <p-inputnumber 
+                formControlName="amount"
+                [showButtons]="true" 
+                buttonLayout="horizontal" 
+                spinnerMode="horizontal" 
+                inputId="horizontal" 
+                [inputStyle]="{ width: '3rem' }"
+                [min]="0"
+                [max]="product.balance">
+                <ng-template #incrementbuttonicon>+</ng-template>
+                <ng-template #decrementbuttonicon>-</ng-template>
+              </p-inputnumber>
+            </div>
+            <button 
+              class="btn-primary" 
+              (click)="addToCart(product, i)"
+              [disabled]="getProductAmount(i) === 0 || product.balance === 0">
+              Adicionar ao carrinho
+            </button>
           </div>
-        </div>
-        <button class="btn-primary" (click)="addToCart(product)">Adicionar ao carrinho</button>
-      </li>
-    }
-  </ul>
-  <aside>
-    <h2>Carrinho</h2>
-    <app-cart [cartItems]="cartItems"></app-cart>
-  </aside>
+        </li>
+      }
+    </ul>
+    
+    <aside>
+      <h2>Carrinho</h2>
+      <app-cart [cartItems]="cartItems"></app-cart>
+    </aside>
+  </div>
 </section>
+<p-toast position="bottom-center" />

@@ -1,16 +1,21 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { InvoicesService } from './invoices-service';
 import Invoice from '../interfaces/invoice';
+import { Toast, ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+
+type SeverityType = 'success' | 'error' | 'info' | 'warn';
 
 @Component({
   selector: 'app-invoices',
-  imports: [],
+  imports: [ToastModule],
   templateUrl: './invoices.html',
-  styleUrl: './invoices.scss'
+  styleUrl: './invoices.scss',
+  providers:[MessageService]
 })
 export class Invoices implements OnInit {
 
-  constructor(private service: InvoicesService, private cdRef: ChangeDetectorRef) {}
+  constructor(private service: InvoicesService, private cdRef: ChangeDetectorRef, private messageService: MessageService) {}
   
   invoicesList: Invoice[] = [];
   loading = false;
@@ -48,14 +53,21 @@ export class Invoices implements OnInit {
       next: (invoices: Invoice) => {
         this.loadInvoices();
         this.loading = false;
+        const successMessage = `A nota foi impressa!`;
+        this.showMessage('success', 'Sucesso', successMessage);
         this.cdRef.detectChanges();
       },
       error: (error: any) => {
         console.error('Erro completo:', error);
         this.error = error.message;
         this.loading = false;
+        this.showMessage('error', 'Erro', error);
         this.cdRef.detectChanges();
       }
     })
+  }
+
+  showMessage(severity: SeverityType, title: string, message: string): void {
+    this.messageService.add({ severity: severity, summary: title, detail: message });
   }
 }

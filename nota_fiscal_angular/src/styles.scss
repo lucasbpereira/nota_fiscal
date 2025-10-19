@@ -62,3 +62,20 @@ table {
     background-color: #1e3648;
   }
 }
+
+.p-inputtext {
+  background: transparent !important;
+  border: 1px solid #ccc !important;
+    color:#1e3648 !important
+
+}
+
+/* Para campos específicos */
+p-inputtext .p-inputtext {
+  background: transparent !important;
+  color:#1e3648 !important
+}
+
+.p-toast-detail {
+  color:#1e3648 !important
+}

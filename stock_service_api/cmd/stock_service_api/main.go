@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/lucasbpereira/stock_service_api/db"
@@ -20,11 +21,13 @@ func main() {
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowCredentials: true,
-		MaxAge:           300, 
+		MaxAge:           300,
 	}))
 
 	app.Post("/products", handlers.CreateProduct)
 	app.Get("/products", handlers.GetProducts)
 	app.Put("/products/balance-update", handlers.BalanceUpdate)
+	app.Get("/product/:id", handlers.GetProductById)
+
 	log.Fatal(app.Listen(":3000"))
 }

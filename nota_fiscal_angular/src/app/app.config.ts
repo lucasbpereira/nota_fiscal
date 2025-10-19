@@ -4,10 +4,10 @@ import { registerLocaleData } from '@angular/common';
 
 import { routes } from './app.routes';
 import localePt from '@angular/common/locales/pt';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { providePrimeNG } from 'primeng/config';
-import Aura from '@primeuix/themes/aura';
+import Aura from '@primeuix/themes/aura'; // Corrigido o nome do pacote
 import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 registerLocaleData(localePt);
 

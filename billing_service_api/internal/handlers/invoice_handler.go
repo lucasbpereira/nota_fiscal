@@ -1,14 +1,15 @@
 package handlers
 
 import (
-	"fmt"
-	"log"
-	"time"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
-	"os"
+	"log"
 	"net/http"
+	"os"
+	"time"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -32,10 +33,31 @@ type ErrorResponse struct {
 	Value       string `json:"value"`
 }
 
+type Product struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Price       float64   `json:"price"`
+	Balance     int       `json:"balance"`
+}
+
 type CreateInvoiceRequest struct {
 	Products []models.InvoiceProduct `json:"products" validate:"required,min=1,dive"`
 }
 
+type APIClient struct {
+	baseURL    string
+	httpClient *http.Client
+}
+
+func NewAPIClient(baseURL string) *APIClient {
+	return &APIClient{
+		baseURL: baseURL,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
 
 func CreateInvoice(c *fiber.Ctx) error {
 	var request CreateInvoiceRequest
@@ -98,20 +120,20 @@ func CreateInvoice(c *fiber.Ctx) error {
 	}
 
 	var invoiceProducts []models.InvoiceProduct
-	productQuery := `INSERT INTO invoice_products (invoice_code, product_id, amount, price, name, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
-	
+	productQuery := `INSERT INTO invoice_products (invoice_code, product_id, amount, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
+
 	for _, product := range request.Products {
 		product.InvoiceCode = invoice.Code
 		product.CreatedAt = time.Now().Format(time.RFC3339)
-		
+
 		var productID uuid.UUID
-		err = tx.QueryRow(productQuery, product.InvoiceCode, product.ProductID, product.Amount, product.Price, product.Name, product.CreatedAt).Scan(&productID)
+		err = tx.QueryRow(productQuery, product.InvoiceCode, product.ProductID, product.Amount, product.CreatedAt).Scan(&productID)
 		if err != nil {
 			tx.Rollback()
 			log.Printf("Error inserting invoice product: %v", err)
 			return c.Status(500).JSON(fiber.Map{"error": "Error creating invoice products", "details": err.Error()})
 		}
-		
+
 		product.ID = productID
 		invoiceProducts = append(invoiceProducts, product)
 	}
@@ -127,7 +149,7 @@ func CreateInvoice(c *fiber.Ctx) error {
 
 func GetOpenInvoices(c *fiber.Ctx) error {
 	var invoices []models.Invoice
-	
+
 	err := db.DB.Select(&invoices, "SELECT * FROM invoices WHERE status = 'ABERTO' ORDER BY created_at DESC")
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error getting open invoices"})
@@ -135,12 +157,12 @@ func GetOpenInvoices(c *fiber.Ctx) error {
 
 	for i := range invoices {
 		var invoiceProducts []models.InvoiceProduct
-		
+
 		err = db.DB.Select(&invoiceProducts, "SELECT * FROM invoice_products WHERE invoice_code = $1", invoices[i].Code)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Error getting invoice products"})
 		}
-		
+
 		invoices[i].Products = invoiceProducts
 	}
 
@@ -176,16 +198,17 @@ func UpdateInvoiceStatus(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error updating invoice status"})
 	}
 
-	err = updateStockProducts(invoiceProducts)
+	apiClient := NewAPIClient("http://stock_service_api:3000")
+	err = apiClient.UpdateStockProducts(invoiceProducts, "/products/balance-update")
 	if err != nil {
-		_, rollbackErr := db.DB.Exec("UPDATE invoices SET status = $1, updated_at = $2 WHERE code = $3", 
+		_, rollbackErr := db.DB.Exec("UPDATE invoices SET status = $1, updated_at = $2 WHERE code = $3",
 			models.StatusAberto, time.Now().Format(time.RFC3339), code)
 		if rollbackErr != nil {
 			log.Printf("Error rolling back invoice status: %v", rollbackErr)
 		}
-		
+
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Error updating stock, invoice reopened",
+			"error":   "Error updating stock, invoice reopened",
 			"details": err.Error(),
 		})
 	}
@@ -204,7 +227,6 @@ func UpdateInvoiceStatus(c *fiber.Ctx) error {
 	})
 }
 
-
 func generateInvoiceCode() (string, error) {
 	currentDate := time.Now().Format("20060102")
 
@@ -221,20 +243,41 @@ func generateInvoiceCode() (string, error) {
 	return fmt.Sprintf("%s%d", currentDate, nextNumber), nil
 }
 
-func calculateInvoiceTotalValue(products []models.InvoiceProduct) (float64, error) {
+func calculateInvoiceTotalValue(invoiceProducts []models.InvoiceProduct) (float64, error) {
 	totalValue := 0.0
-	for _, product := range products {
-		totalValue += float64(product.Amount) * product.Price
+	apiClient := NewAPIClient("http://stock_service_api:3000")
+
+	log.Printf("Calculating total value for %d products", len(invoiceProducts))
+
+	for i, invoiceProduct := range invoiceProducts {
+		// DEBUG: Log para verificar o ProductID
+		log.Printf("Processing product %d: ProductID=%+v, Type=%T", i, invoiceProduct.ProductID, invoiceProduct.ProductID)
+
+		// Buscar produto na API
+		product, err := apiClient.GetProduct(invoiceProduct.ProductID)
+		if err != nil {
+			log.Printf("Error getting product %s from API: %v", invoiceProduct.ProductID, err)
+			return 0, fmt.Errorf("error getting product %s: %v", invoiceProduct.ProductID, err)
+		}
+		log.Printf("Product retrieved: Name=%s, Price=%.2f", product.Name, product.Price)
+
+		// Calcular subtotal
+		subtotal := float64(invoiceProduct.Amount) * product.Price
+		totalValue += subtotal
+
+		log.Printf("Product %d: Amount=%d, Price=%.2f, Subtotal=%.2f", i, invoiceProduct.Amount, product.Price, subtotal)
 	}
+
+	log.Printf("Total invoice value: %.2f", totalValue)
 	return totalValue, nil
 }
 
-func updateStockProducts(products []models.InvoiceProduct) error {
+func (c *APIClient) UpdateStockProducts(products []models.InvoiceProduct, endpoint string) error {
 	var stockUpdates []StockUpdateRequest
 	for _, product := range products {
 		stockUpdates = append(stockUpdates, StockUpdateRequest{
 			ProductID: product.ProductID,
-			Quantity:  product.Amount, 
+			Quantity:  product.Amount,
 		})
 	}
 
@@ -243,30 +286,38 @@ func updateStockProducts(products []models.InvoiceProduct) error {
 		return fmt.Errorf("error marshaling stock data: %v", err)
 	}
 
-	
 	stockServiceURL := os.Getenv("STOCK_SERVICE_URL")
 	if stockServiceURL == "" {
-		// Fallback para o nome do serviço no Docker
 		stockServiceURL = "http://stock_service_api:3000"
-	}	
-	url := stockServiceURL + "/products/balance-update"
-	
+	}
+	url := stockServiceURL + endpoint
+
 	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+
+	// Usa o client do APIClient em vez de criar um novo
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("error calling stock service: %v", err)
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %v", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error != "" {
+			return fmt.Errorf("stock service returned error: %s - %s", resp.Status, errorResp.Error)
+		}
 		return fmt.Errorf("stock service returned error: %s - %s", resp.Status, string(body))
 	}
 
@@ -274,8 +325,8 @@ func updateStockProducts(products []models.InvoiceProduct) error {
 		Success bool   `json:"success"`
 		Message string `json:"message"`
 	}
-	
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+
+	if err := json.Unmarshal(body, &response); err != nil {
 		return fmt.Errorf("error decoding stock service response: %v", err)
 	}
 
@@ -285,4 +336,48 @@ func updateStockProducts(products []models.InvoiceProduct) error {
 
 	log.Printf("Stock successfully updated for %d products", len(products))
 	return nil
+}
+
+func (c *APIClient) GetProduct(productID string) (*Product, error) {
+	stockServiceURL := os.Getenv("STOCK_SERVICE_URL")
+	if stockServiceURL == "" {
+		stockServiceURL = "http://stock_service_api:3000"
+	}
+	url := fmt.Sprintf("%s/product/%s", stockServiceURL, productID)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error calling product service: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error != "" {
+			return nil, fmt.Errorf("product service returned error: %s - %s", resp.Status, errorResp.Error)
+		}
+		return nil, fmt.Errorf("product service returned error: %s - %s", resp.Status, string(body))
+	}
+
+	var product Product
+	if err := json.Unmarshal(body, &product); err != nil {
+		return nil, fmt.Errorf("error decoding product service response: %v", err)
+	}
+
+	log.Printf("Product successfully retrieved: %s", productID)
+	return &product, nil
 }

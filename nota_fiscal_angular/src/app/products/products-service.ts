@@ -25,8 +25,8 @@ export class ProductsService {
   createProduct(product: Product): Observable<Product> {
     return this.http.post<Product>(`${API_URL}products`, product).pipe(
       catchError(error => {
-        console.error('Erro ao buscar produtos:', error);
-        return throwError(() => new Error('Erro ao carregar produtos'));
+        console.error('Erro ao buscar produtos:', error.error);
+        return throwError(() => error);
       })
     );
   }
